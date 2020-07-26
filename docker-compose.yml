@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  dev-postgres-compose:
+    image: postgres
+    environment:
+      POSTGRES_USER: "daniela"
+      POSTGRES_PASSWORD: "Empire42*"
+    ports:
+      - "15432:5432"
+      
+  dev-pgadmin-compose:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "daniela@daniela.com.br"
+      PGADMIN_DEFAULT_PASSWORD: "Londres2021!"
+    ports:
+      - "16543:80"
+    depends_on:
+      - dev-postgres-compose
+ 
+
+networks: 
+  postgres-compose-network:
+    driver: bridge

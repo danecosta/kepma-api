@@ -1,0 +1,103 @@
+version: '3'
+
+networks:
+    main_host:
+      external: true
+
+services:
+  consul-node1:
+    image: bitnami/consul
+    environment:
+      - CONSUL_BOOTSTRAP_EXPECT=3
+      - CONSUL_CLIENT_LAN_ADDRESS=0.0.0.0
+      - CONSUL_DISABLE_KEYRING_FILE=true
+      - CONSUL_RETRY_JOIN_ADDRESS=consul-node1
+    ports:
+      - '8300:8300'
+      - '8301:8301'
+      - '8302:8302/tcp'
+      - '8301:8301/udp'
+      - '8500:8500'
+      - '8600:8600'
+      - '8600:8600/udp'
+    labels: 
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`consul.localhost`)"
+    volumes:
+      - 'consul-node1_data:/bitnami'
+    networks:
+      - main_host
+
+  consul-node2:
+    image: bitnami/consul
+    environment:
+      - CONSUL_BOOTSTRAP_EXPECT=3
+      - CONSUL_CLIENT_LAN_ADDRESS=0.0.0.0
+      - CONSUL_DISABLE_KEYRING_FILE=true
+      - CONSUL_RETRY_JOIN_ADDRESS=consul-node1
+      - CONSUL_ENABLE_UI=false
+    volumes:
+      - 'consul-node2_data:/bitnami'
+    networks:
+      - main_host
+
+  consul-node3:
+    image: bitnami/consul
+    environment:
+      - CONSUL_BOOTSTRAP_EXPECT=3
+      - CONSUL_CLIENT_LAN_ADDRESS=0.0.0.0
+      - CONSUL_DISABLE_KEYRING_FILE=true
+      - CONSUL_RETRY_JOIN_ADDRESS=consul-node1
+      - CONSUL_ENABLE_UI=false
+    volumes:
+      - 'consul-node3_data:/bitnami'
+    networks:
+      - main_host
+
+     
+  traefik:
+    image: traefik
+    #  since we set --docker.exposedByDefault=false the services are not added by default
+    # but need the label traefik.enable=true
+    command: 
+        - "--api.insecure=true"
+        - "--providers.docker=true"
+        - "--providers.consulcatalog=true"
+        - "--providers.consulcatalog.refreshInterval=30s"
+        - "--providers.consulcatalog.endpoint.address=consul-node1:8500"
+        - "--providers.docker.exposedbydefault=false"
+        - "--providers.consulcatalog.exposedByDefault=true"
+        - "--entrypoints.web.address=:80"
+
+    ports:
+        - 80:80
+        - 443:443
+        - 8080:8080
+    
+    labels: 
+        - traefik.enable=true
+        - traefik.http.services.service_service.rule=Host(`localhost`)
+        - traefik.http.routers.consulrouter.rule=Host(`consulcatalog.localhost`)
+        - traefik.tcp.services.mytcpservice.loadbalancer.server.port=423
+        - traefik.http.services.myservice.loadbalancer.server.port=7654
+        - traefik.http.routers.api.rule=Host(`traefik.localhost`)
+        - traefik.http.routers.api.service=api@internal
+        - traefik.http.services.myservice.loadbalancer.healthcheck.hostname=localhost.healthcheck
+        - log.filePath=/Users/mviniciusmarques/Development/template_node/template_micro_node/traefik.log
+
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+        - consul-node1
+    links:
+        - consul-node1
+    networks:
+        - main_host  
+
+volumes:
+  consul-node1_data:
+    driver: local
+  consul-node2_data:
+    driver: local
+  consul-node3_data:
+    driver: local

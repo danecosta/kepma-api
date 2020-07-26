@@ -1,0 +1,22 @@
+image: node:10.15.3
+
+pipelines:
+  branches:
+    master:
+      - step:
+          name: Build docker image
+          caches:
+            - node
+          script:
+            - docker login -u $DOCKER_HUB_USER -p $DOCKER_HUB_PASSWORD
+            - docker build -t vinimarq/freela-control:master .
+            - docker push vinimarq/freela-control:master
+          services:
+            - docker
+      - step:
+          name: Deploy na AWS
+          trigger: manual
+          deployment: master
+          script:
+            - ssh -i /opt/atlassian/pipelines/agent/ssh/id_rsa ubuntu@18.228.140.183 'bash -s' < deploy.sh
+            
